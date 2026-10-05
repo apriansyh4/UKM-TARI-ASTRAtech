@@ -44,7 +44,7 @@ function StudentForm({ open, initial, onClose, onSaved }) {
   return (
     <Modal open={open} onClose={onClose} title={initial ? "Ubah data mahasiswa" : "Tambah mahasiswa"} width={520} as="form" onSubmit={save}>
       <div className="fg">
-        <div className="full"><label className="label" htmlFor="s-nim">NIM</label><input className="inp mono" id="s-nim" inputMode="numeric" maxLength={15} placeholder="0320260150" value={f.nim} onChange={(e) => set("nim", e.target.value.replace(/\D/g, ""))} autoFocus={!initial} /></div>
+        <div className="full"><label className="label" htmlFor="s-nim">NIM</label><input className="inp mono" id="s-nim" inputMode="numeric" maxLength={15} placeholder="0920250058" value={f.nim} onChange={(e) => set("nim", e.target.value.replace(/\D/g, ""))} autoFocus={!initial} /></div>
         <div className="full"><label className="label" htmlFor="s-nama">Nama lengkap</label><input className="inp" id="s-nama" placeholder="Nama sesuai KTM" value={f.nama} onChange={(e) => set("nama", e.target.value)} autoFocus={!!initial} /></div>
         <div>
           <label className="label" htmlFor="s-prodi">Prodi</label>
