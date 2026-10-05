@@ -1,7 +1,7 @@
-import Acara from "@/components/admin/Acara";
+import Dashboard from "@/components/admin/Dashboard";
 
-export const metadata = { title: "Acara" };
+export const metadata = { title: "Dashboard" };
 
 export default function Page() {
-  return <Acara />;
+  return <Dashboard />;
 }

@@ -1,42 +1,57 @@
-import Link from "next/link";
-import { redirect } from "next/navigation";
-import AdminShell from "@/components/admin/AdminShell";
-import SignOutButton from "@/components/admin/SignOutButton";
-import { supabaseServer } from "@/lib/supabase/server";
+import "./globals.css";
+import Background from "@/components/Background";
+import { ToastProvider } from "@/components/Toast";
+import SetupNotice from "@/components/SetupNotice";
 
-export const dynamic = "force-dynamic";
-export const metadata = { title: "Admin" };
+export const metadata = {
+  title: { default: "STAMPTech Plus · UKM TARI ASTRAtech", template: "%s · STAMPTech Plus" },
+  description: "Sistem absensi jam plus UKM TARI ASTRAtech untuk setiap latihan dan acara.",
+  applicationName: "STAMPTech Plus",
+  icons: { icon: "/favicon.ico", apple: "/apple-touch-icon.png" },
+  appleWebApp: { capable: true, title: "STAMPTech Plus", statusBarStyle: "black-translucent" },
+  formatDetection: { telephone: false },
+};
 
-export default async function AdminLayout({ children }) {
-  const sb = supabaseServer();
-  const {
-    data: { user },
-  } = await sb.auth.getUser();
-  if (!user) redirect("/login");
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#0A0407" },
+    { media: "(prefers-color-scheme: light)", color: "#F6EFEA" },
+  ],
+};
 
-  const { data: admin } = await sb.from("admins").select("nama").eq("user_id", user.id).maybeSingle();
+// set tema sebelum render pertama supaya tidak berkedip
+const themeScript = `try{var t=localStorage.getItem('stamptech-theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t;}catch(e){}`;
 
-  if (!admin) {
-    return (
-      <main className="center-page">
-        <div className="glass" style={{ width: "min(460px,100%)", display: "grid", gap: 16, textAlign: "center", padding: 32 }}>
-          <img src="/logo.webp" alt="Logo STAMPTech Plus" width="72" height="72" style={{ borderRadius: 18, margin: "0 auto" }} />
-          <h2 style={{ justifyContent: "center", fontSize: "var(--t-lg)" }}>Akun belum terdaftar sebagai admin</h2>
-          <p className="sub" style={{ margin: 0 }}>
-            Kamu masuk sebagai <b>{user.email}</b>, tapi akun ini belum ada di tabel <code>admins</code>. Minta admin utama menambahkan akunmu.
-          </p>
-          <div className="toolbar" style={{ justifyContent: "center" }}>
-            <SignOutButton />
-            <Link href="/" className="btn btn-gold">Ke form absen</Link>
-          </div>
-        </div>
-      </main>
-    );
-  }
+function supabaseProblem() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+  if (!url || !key) return "Variabel NEXT_PUBLIC_SUPABASE_URL dan/atau NEXT_PUBLIC_SUPABASE_ANON_KEY belum diisi saat aplikasi di-build.";
+  if (!/^https:\/\/[a-z0-9-]+\.supabase\.(co|in)\/?$/i.test(url.trim()) && !/^https?:\/\//i.test(url.trim())) return "NEXT_PUBLIC_SUPABASE_URL tidak valid. Isi dengan Project URL, contoh https://abcdxyz.supabase.co (tanpa /rest/v1).";
+  if (key.trim().split(".").length !== 3 && !key.trim().startsWith("sb_publishable_")) return "NEXT_PUBLIC_SUPABASE_ANON_KEY tidak valid. Salin anon public key (bukan service_role).";
+  return "";
+}
 
+export default function RootLayout({ children }) {
+  const problem = supabaseProblem();
   return (
-    <AdminShell email={user.email} nama={admin.nama || "Admin"}>
-      {children}
-    </AdminShell>
+    <html lang="id" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap"
+        />
+      </head>
+      <body>
+        <Background />
+        <ToastProvider>{problem ? <SetupNotice problem={problem} /> : children}</ToastProvider>
+      </body>
+    </html>
   );
 }

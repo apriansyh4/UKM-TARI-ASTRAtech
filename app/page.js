@@ -1,7 +1,7 @@
-import Acara from "@/components/admin/Acara";
+import PublicForm from "@/components/PublicForm";
 
-export const metadata = { title: "Acara" };
+export const metadata = { title: "Form Absen Mahasiswa" };
 
-export default function Page() {
-  return <Acara />;
+export default function Home() {
+  return <PublicForm />;
 }
