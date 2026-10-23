@@ -126,6 +126,8 @@ $$;
 -- yang bisa diabsen untuk acara tersebut. Kalau false, semua mahasiswa boleh.
 -- ---------------------------------------------------------------------
 alter table public.events add column if not exists peserta_only boolean not null default false;
+-- Koor acara (NIM). Di laporan, koor bertugas "Koor Tari", peserta lain "Tim Tari".
+alter table public.events add column if not exists koor text[] not null default '{}';
 
 create table if not exists public.event_participants (
   event_id   uuid not null references public.events(id) on delete cascade,
@@ -226,7 +228,7 @@ $$;
 -- Cari mahasiswa berdasarkan NIM (satu baris, bukan daftar)
 drop function if exists public.lookup_student(text, uuid);
 create function public.lookup_student(p_nim text, p_session uuid default null)
-returns table (nim text, nama text, prodi text, semester int, total_jam numeric, existing_status text, existing_at timestamptz, is_peserta boolean)
+returns table (nim text, nama text, prodi text, semester int, total_jam numeric, existing_status text, existing_at timestamptz, is_peserta boolean, event_jam numeric)
 language sql stable security definer set search_path = public as $$
   select st.nim, st.nama, st.prodi, st.semester,
          coalesce((
@@ -239,7 +241,16 @@ language sql stable security definer set search_path = public as $$
          (select a.status from public.attendances a where a.nim = st.nim and a.session_id = p_session),
          (select a.updated_at from public.attendances a where a.nim = st.nim and a.session_id = p_session),
          case when p_session is null then true
-              else public.is_peserta((select x.event_id from public.sessions x where x.id = p_session), st.nim) end
+              else public.is_peserta((select x.event_id from public.sessions x where x.id = p_session), st.nim) end,
+         -- jam plus yang sudah dikumpulkan di acara sesi ini saja
+         coalesce((
+           select sum(case when a.status = 'hadir' and e.counts_jam_plus then s.durasi_jam else 0 end)
+           from public.attendances a
+           join public.sessions s on s.id = a.session_id
+           join public.events e on e.id = s.event_id
+           where a.nim = st.nim
+             and s.event_id = (select x.event_id from public.sessions x where x.id = p_session)
+         ), 0)
   from public.students st
   where st.nim = btrim(p_nim);
 $$;
