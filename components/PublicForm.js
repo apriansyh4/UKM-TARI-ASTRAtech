@@ -142,6 +142,8 @@ export default function PublicForm() {
                   st={st}
                   jamValue={st?.total_jam}
                   jamLabel="total jam plus kamu"
+                  evJam={st?.event_jam}
+                  evLabel={ses && ev?.counts_jam_plus ? "total jam plus event" : null}
                   warn={notPeserta ? "Kamu tidak terdaftar sebagai peserta acara ini. Hubungi panitia kalau seharusnya ikut." : null}
                   note={st?.existing_status ? `Kamu sudah absen ${STATUS[st.existing_status]} pukul ${fmtTime(st.existing_at)}. Kirim lagi kalau mau mengubah.` : null}
                 />
