@@ -94,20 +94,20 @@ export default function Laporan() {
         ) : (
           <div className="tbl mx">
             {!matrix || !matrix.rows.length ? <Empty icon="sheet">Belum ada data untuk acara ini.</Empty> : (
-              <table style={{ minWidth: 540 + matrix.ss.length * 124 }}>
-                <thead><tr><th>No</th><th>NIM</th><th>Nama</th><th>Prodi</th><th className="c">Semester</th>
+              <table style={{ minWidth: 640 + matrix.ss.length * 124 }}>
+                <thead><tr><th>No</th><th>NIM</th><th>Nama</th><th>Prodi</th><th>Tugas</th><th className="c">Semester</th>
                   {matrix.ss.map((s) => <th key={s.id} className="dt"><b>{xlsDate(s.tanggal)}</b><span className="dt-line" />{clock(s.jam_mulai)} - {clock(s.jam_selesai)}</th>)}
                   <th className="r">Total</th></tr></thead>
                 <tbody>
                   {matrix.rows.map((r, i) => (
                     <tr key={r.st.nim}>
-                      <td className="dim mono">{i + 1}</td><td className="mono">{r.st.nim}</td><td style={{ whiteSpace: "nowrap" }}>{r.st.nama}</td><td className="dim">{r.st.prodi}</td><td className="c mono">{r.st.semester}</td>
+                      <td className="dim mono">{i + 1}</td><td className="mono">{r.st.nim}</td><td style={{ whiteSpace: "nowrap" }}>{r.st.nama}</td><td className="dim">{r.st.prodi}</td><td style={{ whiteSpace: "nowrap" }}>{r.koor ? <span className="koor-tag">{r.tugas}</span> : <span className="dim">{r.tugas}</span>}</td><td className="c mono">{r.st.semester}</td>
                       {r.cells.map((v, k) => <td key={k} className="cell">{v ? <span className="cell-j">{fmtJam(v)} Jam</span> : null}</td>)}
                       <td className="r"><span className="jam">{fmtJam(r.total)} Jam</span></td>
                     </tr>
                   ))}
                 </tbody>
-                <tfoot><tr><td /><td colSpan={4}>Total</td>{matrix.colTot.map((v, k) => <td key={k} className="cell mono">{v ? `${fmtJam(v)} Jam` : ""}</td>)}<td className="r"><span className="jam">{fmtJam(matrix.grand)} Jam</span></td></tr></tfoot>
+                <tfoot><tr><td /><td colSpan={5}>Total</td>{matrix.colTot.map((v, k) => <td key={k} className="cell mono">{v ? `${fmtJam(v)} Jam` : ""}</td>)}<td className="r"><span className="jam">{fmtJam(matrix.grand)} Jam</span></td></tr></tfoot>
               </table>
             )}
           </div>
