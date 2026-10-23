@@ -21,7 +21,7 @@ export default function Rekap({ evId }) {
 
   const data = useMemo(() => ({
     students: students.map((s) => ({ nim: s.nim, nama: s.nama, prodi: s.prodi, semester: s.semester, via: s.registered_via || "admin" })),
-    events: events.map((e) => ({ id: e.id, name: e.name, category: e.category, only: !!e.peserta_only, peserta: e.peserta || [], plus: e.counts_jam_plus,
+    events: events.map((e) => ({ id: e.id, name: e.name, category: e.category, only: !!e.peserta_only, peserta: e.peserta || [], koor: e.koor || [], plus: e.counts_jam_plus,
       sessions: e.sessions.map((s) => ({ id: s.id, date: s.tanggal, start: hhmm(s.jam_mulai), end: hhmm(s.jam_selesai) })) })),
     recs: att.map((a) => ({ ses: a.session_id, nim: a.nim, status: a.status })),
   }), [events, students, att]);
@@ -83,22 +83,22 @@ export default function Rekap({ evId }) {
               <div><small>Total jam plus</small><b>{fmtJam(R.tot.jam)}</b></div>
             </div>
             <div className="tbl">
-              <table style={{ minWidth: 820 }}>
-                <thead><tr><th>No</th><th>Mahasiswa</th><th>NIM</th><th>Prodi</th><th className="c">Smt</th><th className="c">Hadir</th><th className="c">Tidak</th><th className="c">Belum</th><th>Kehadiran</th><th className="r">Total jam</th></tr></thead>
+              <table style={{ minWidth: 900 }}>
+                <thead><tr><th>No</th><th>Mahasiswa</th><th>NIM</th><th>Prodi</th><th>Tugas</th><th className="c">Smt</th><th className="c">Hadir</th><th className="c">Tidak</th><th className="c">Belum</th><th>Kehadiran</th><th className="r">Total jam</th></tr></thead>
                 <tbody>
                   {R.rows.filter((r) => match(r.st)).map((r, i) => (
                     <tr key={r.st.nim}>
                       <td className="dim mono">{pad(i + 1)}</td>
                       <td><div className="who"><MiniAv st={r.st} /><span>{r.st.nama}</span></div></td>
-                      <td className="mono dim">{r.st.nim}</td><td className="dim">{r.st.prodi}</td><td className="c mono">{r.st.semester}</td>
+                      <td className="mono dim">{r.st.nim}</td><td className="dim">{r.st.prodi}</td><td>{r.koor ? <span className="koor-tag">{r.tugas}</span> : <span className="dim">{r.tugas}</span>}</td><td className="c mono">{r.st.semester}</td>
                       <td className="c mono">{r.hadir}</td><td className="c mono">{r.tidak}</td><td className="c mono dim">{r.belum}</td>
                       <td><div className="rk-bar"><i style={{ width: `${r.pct}%` }} /><span>{r.pct}%</span></div></td>
                       <td className="r"><span className={`jam ${r.jam ? "" : "z"}`}>{fmtJam(r.jam)} jam</span></td>
                     </tr>
                   ))}
-                  {!R.rows.length ? <tr><td colSpan={10}><Empty>Belum ada peserta atau absen di acara ini.</Empty></td></tr> : null}
+                  {!R.rows.length ? <tr><td colSpan={11}><Empty>Belum ada peserta atau absen di acara ini.</Empty></td></tr> : null}
                 </tbody>
-                {R.rows.length ? <tfoot><tr><td colSpan={5}>{R.rows.length} mahasiswa</td><td className="c">{R.tot.hadir}</td><td className="c">{R.tot.tidak}</td><td className="c">{R.tot.belum}</td><td>{R.pct}%</td><td className="r"><span className="jam">{fmtJam(R.tot.jam)} jam</span></td></tr></tfoot> : null}
+                {R.rows.length ? <tfoot><tr><td colSpan={6}>{R.rows.length} mahasiswa</td><td className="c">{R.tot.hadir}</td><td className="c">{R.tot.tidak}</td><td className="c">{R.tot.belum}</td><td>{R.pct}%</td><td className="r"><span className="jam">{fmtJam(R.tot.jam)} jam</span></td></tr></tfoot> : null}
               </table>
             </div>
           </>
