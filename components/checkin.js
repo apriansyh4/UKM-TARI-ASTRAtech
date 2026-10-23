@@ -62,18 +62,23 @@ export function NimField({ id, value, onValue, lookup, onResult, autoFocus, plac
   );
 }
 
-export function StudentCard({ st, jamLabel, jamValue, note, warn }) {
+export function StudentCard({ st, jamLabel, jamValue, evJam, evLabel, note, warn }) {
   if (!st) return null;
   return (
     <>
       <div className="idcard">
-        <div className="idcard-in">
+        <div className={`idcard-in ${evLabel ? "two" : ""}`}>
           <div className="avatar">{initials(st.nama)}</div>
           <div style={{ minWidth: 0, position: "relative", zIndex: 1 }}>
             <div className="id-name">{st.nama}</div>
             <div className="id-meta"><span className="mono">{st.nim}</span><span>{PRODI[st.prodi] || st.prodi}</span><span>Semester {st.semester}</span></div>
           </div>
-          <div className="id-jam"><b>{fmtJam(jamValue)}</b><small>{jamLabel}</small></div>
+          {evLabel ? (
+            <div className="id-jams">
+              <div className="id-jam ev"><b>{fmtJam(evJam)}</b><small>{evLabel}</small></div>
+              <div className="id-jam"><b>{fmtJam(jamValue)}</b><small>{jamLabel}</small></div>
+            </div>
+          ) : <div className="id-jam"><b>{fmtJam(jamValue)}</b><small>{jamLabel}</small></div>}
         </div>
       </div>
       {warn ? <div className="note warn"><Icon name="x" />{warn}</div> : note ? <div className="note"><Icon name="refresh" />{note}</div> : null}
@@ -99,7 +104,7 @@ export function ReasonBox({ open, required, chip, onChip, text, onText, id = "re
   return (
     <div className={`reason-box ${open ? "open" : ""}`}>
       <div>
-        <label className="label" htmlFor={id}>Keterangan {required ? <span className="req">· wajib</span> : null}</label>
+        <label className="label" htmlFor={id}>Keterangan {required ? <span className="req">Â· wajib</span> : null}</label>
         <div className="reasons">
           {REASONS.map((r) => (
             <button key={r} type="button" className="rc" tabIndex={open ? 0 : -1} aria-pressed={chip === r} onClick={() => onChip(chip === r ? null : r)}>{r}</button>
@@ -145,7 +150,7 @@ export function EventSelect({ id, events, value, onChange, sub, emptyText = "Bel
     <div className="ev-select">
       <span className="ico"><Icon name={CAT_ICON[cur?.category] || "calendar"} /></span>
       <select id={id} className="select" value={value || ""} disabled={!events.length} onChange={(e) => onChange(e.target.value)} aria-label="Pilih acara">
-        {events.length ? events.map((e) => <option key={e.id} value={e.id}>{e.name}{sub ? ` · ${sub(e)}` : ""}</option>) : <option value="">{emptyText}</option>}
+        {events.length ? events.map((e) => <option key={e.id} value={e.id}>{e.name}{sub ? ` Â· ${sub(e)}` : ""}</option>) : <option value="">{emptyText}</option>}
       </select>
     </div>
   );
@@ -164,7 +169,7 @@ export function DayStrip({ sessions, value, onChange, meta }) {
   return (
     <div className="days" ref={ref}>
       {[...sessions].sort(sortByDate).map((s) => (
-        <button key={s.id} type="button" className={`day ${s.tanggal === today ? "today" : ""} ${s.tanggal > today ? "future" : ""}`} aria-pressed={s.id === value} title={`${fmtLong(s.tanggal)} · ${rangeOf(s)}${s.lokasi ? ` · ${s.lokasi}` : ""}`} onClick={() => onChange(s.id)}>
+        <button key={s.id} type="button" className={`day ${s.tanggal === today ? "today" : ""} ${s.tanggal > today ? "future" : ""}`} aria-pressed={s.id === value} title={`${fmtLong(s.tanggal)} Â· ${rangeOf(s)}${s.lokasi ? ` Â· ${s.lokasi}` : ""}`} onClick={() => onChange(s.id)}>
           <span className="dw">{fmtWeekday(s.tanggal)}</span>
           <span className="dn">{pad(dObj(s.tanggal).getDate())}</span>
           <span className="dw">{meta ? meta(s) : `${fmtJam(hrsOf(s))} j`}</span>
