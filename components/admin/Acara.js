@@ -1,17 +1,74 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Icon from "../Icon";
 import Modal from "../Modal";
 import { useToast } from "../Toast";
 import { useData } from "./DataProvider";
-import { ConfirmDelete, Empty, Hero } from "./ui";
+import { ConfirmDelete, Empty, Hero, MiniAv } from "./ui";
 import PesertaModal, { PesertaPicker, syncPeserta } from "./Peserta";
 import { supabaseBrowser, errMsg } from "@/lib/supabase/client";
 import { CATEGORIES, CAT_ICON, STATUS, STATUS_KEYS, WEEKDAYS, datesBetween, dObj, eventRange, fmtJam, fmtShort, hhmm, hrsOf, locSummary, pesertaLabel, rangeOf, sesLoc, shiftDate, todayJakarta } from "@/lib/utils";
 
 const tmpId = () => `new-${Math.random().toString(36).slice(2, 9)}`;
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
+
+/** Dropdown koor yang bisa dicari (nama/NIM/prodi). Bisa lebih dari satu koor. */
+function KoorPicker({ value, onChange, pool }) {
+  const { students } = useData();
+  const [q, setQ] = useState("");
+  const [open, setOpen] = useState(false);
+  const [hi, setHi] = useState(0);
+  const inp = useRef(null);
+  const byNim = useMemo(() => new Map(students.map((x) => [x.nim, x])), [students]);
+  const list = useMemo(() => {
+    const t = q.trim().toLowerCase();
+    return students
+      .filter((x) => !value.includes(x.nim) && (!t || `${x.nama} ${x.nim} ${x.prodi}`.toLowerCase().includes(t)))
+      .sort((a, b) => (pool ? pool.has(b.nim) - pool.has(a.nim) : 0) || a.nama.localeCompare(b.nama))
+      .slice(0, 40);
+  }, [students, value, q, pool]);
+  const pick = (x) => { if (!x) return; onChange([...value, x.nim]); setQ(""); setHi(0); setOpen(false); };
+  const key = (e) => {
+    if (e.key === "ArrowDown") { e.preventDefault(); setOpen(true); setHi((h) => Math.min(h + 1, list.length - 1)); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setHi((h) => Math.max(h - 1, 0)); }
+    else if (e.key === "Enter") { e.preventDefault(); if (open) pick(list[hi]); else setOpen(true); }
+    else if (e.key === "Escape") { if (open) { e.stopPropagation(); setOpen(false); } }
+    else if (e.key === "Backspace" && !q && value.length) onChange(value.slice(0, -1));
+  };
+  return (
+    <div className="koor">
+      {value.length ? (
+        <div className="koor-chips">
+          {value.map((n) => { const x = byNim.get(n); return (
+            <span key={n} className="koor-chip">
+              {x ? <MiniAv st={x} /> : null}<b>{x ? x.nama : n}</b><small className="mono">{n}{x ? ` · ${x.prodi}` : ""}</small>
+              <button type="button" onClick={() => onChange(value.filter((v) => v !== n))} aria-label={`Hapus koor ${x ? x.nama : n}`}><Icon name="x" /></button>
+            </span>
+          ); })}
+        </div>
+      ) : null}
+      <div className={`koor-box ${open ? "open" : ""}`}>
+        <Icon name="search" />
+        <input ref={inp} className="inp" id="f-koor" role="combobox" aria-expanded={open} aria-controls="koor-list" aria-autocomplete="list" autoComplete="off"
+          placeholder={value.length ? "Tambah koor lain (opsional)" : "Cari nama atau NIM koor…"}
+          value={q} onChange={(e) => { setQ(e.target.value); setOpen(true); setHi(0); }} onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 150)} onKeyDown={key} />
+        <button type="button" className="koor-caret" tabIndex={-1} aria-label="Buka daftar" onMouseDown={(e) => e.preventDefault()} onClick={() => { setOpen((o) => !o); inp.current?.focus(); }}><span className="car" aria-hidden="true" /></button>
+        {open ? (
+          <ul className="koor-list" id="koor-list" role="listbox">
+            {list.length ? list.map((x, i) => (
+              <li key={x.nim} role="option" aria-selected={i === hi} className={i === hi ? "hi" : ""} onMouseDown={(e) => e.preventDefault()} onMouseEnter={() => setHi(i)} onClick={() => pick(x)}>
+                <MiniAv st={x} /><span><b>{x.nama}</b><small className="mono">{x.nim} · {x.prodi} · Smt {x.semester}</small></span>
+                {pool && pool.has(x.nim) ? <em>peserta</em> : null}
+              </li>
+            )) : <li className="none">{students.length ? "Tidak ada yang cocok" : "Belum ada mahasiswa terdaftar"}</li>}
+          </ul>
+        ) : null}
+      </div>
+    </div>
+  );
+}
 
 function EventForm({ open, initial, onClose, onSaved }) {
   const toast = useToast();
@@ -26,6 +83,7 @@ function EventForm({ open, initial, onClose, onSaved }) {
   const [lastKey, setLastKey] = useState(null);
   const [only, setOnly] = useState(true);
   const [sel, setSel] = useState(new Set());
+  const [koor, setKoor] = useState([]);
 
   // isi ulang form saat modal dibuka untuk acara lain
   const key = open ? initial?.id || "new" : null;
@@ -38,11 +96,11 @@ function EventForm({ open, initial, onClose, onSaved }) {
         const last = ds.at(-1);
         setF({ ...blank(), name: initial.name, category: initial.category, location: initial.location || "", reason_required: initial.reason_required.filter((k) => STATUS_KEYS.includes(k)), counts_jam_plus: initial.counts_jam_plus, addDate: last ? shiftDate(last, 1) : today, from: last ? shiftDate(last, 1) : today, to: last ? shiftDate(last, 14) : shiftDate(today, 13) });
         setDraft(initial.sessions.map((s) => ({ id: s.id, tanggal: s.tanggal, jam_mulai: hhmm(s.jam_mulai), jam_selesai: hhmm(s.jam_selesai), lokasi: s.lokasi || "" })));
-        setOnly(!!initial.peserta_only); setSel(new Set(initial.peserta || []));
+        setOnly(!!initial.peserta_only); setSel(new Set(initial.peserta || [])); setKoor(initial.koor || []);
       } else {
         setF(blank());
         setDraft([]);
-        setOnly(true); setSel(new Set());
+        setOnly(true); setSel(new Set()); setKoor([]);
       }
     }
   }
@@ -87,10 +145,12 @@ function EventForm({ open, initial, onClose, onSaved }) {
     if (rows.some((s) => !s.tanggal)) return setErr("Ada baris jadwal yang tanggalnya kosong.");
     if (dupDates.size) return setErr(`Tanggal dobel: ${[...dupDates].map(fmtShort).join(", ")}. Satu tanggal hanya boleh satu sesi.`);
     if (rows.some((s) => hrsOf(s) <= 0)) return setErr("Ada sesi dengan jam selesai sebelum jam mulai.");
+    if (!koor.length) return setErr("Pilih koor acara dulu. Setiap acara wajib punya koor.");
     if (only && !sel.size) return setErr("Pilih minimal satu peserta di bagian Peserta acara, atau pilih mode Semua mahasiswa.");
+    const pes = only ? new Set([...sel, ...koor]) : new Set(initial?.peserta || []); // koor otomatis jadi peserta
     setBusy(true); setErr("");
     const sb = supabaseBrowser();
-    const payload = { name, category: f.category, location: f.location.trim() || null, statuses: [...STATUS_KEYS], reason_required: STATUS_KEYS.filter((k) => f.reason_required.includes(k)), counts_jam_plus: f.counts_jam_plus, peserta_only: only };
+    const payload = { name, category: f.category, location: f.location.trim() || null, statuses: [...STATUS_KEYS], reason_required: STATUS_KEYS.filter((k) => f.reason_required.includes(k)), counts_jam_plus: f.counts_jam_plus, peserta_only: only, koor };
     const sesRow = (s) => ({ tanggal: s.tanggal, jam_mulai: s.jam_mulai, jam_selesai: s.jam_selesai, lokasi: s.lokasi.trim() || null });
     try {
       let evId = initial?.id;
@@ -122,8 +182,8 @@ function EventForm({ open, initial, onClose, onSaved }) {
         const { error: e3 } = await sb.from("sessions").insert(fresh);
         if (e3) throw e3;
       }
-      await syncPeserta(sb, evId, initial?.peserta || [], only ? sel : new Set(initial?.peserta || []));
-      toast(`${initial ? "Acara diperbarui" : "Acara dibuat"}${only ? ` · ${sel.size} peserta` : ""}`);
+      await syncPeserta(sb, evId, initial?.peserta || [], pes);
+      toast(`${initial ? "Acara diperbarui" : "Acara dibuat"}${only ? ` · ${pes.size} peserta` : ""}`);
       onSaved(removedSessions);
     } catch (e2) {
       setErr(errMsg(e2));
@@ -137,6 +197,11 @@ function EventForm({ open, initial, onClose, onSaved }) {
     <Modal open={open} onClose={onClose} title={initial ? "Ubah acara" : "Acara baru"} width={860} as="form" onSubmit={save}>
       <div className="fg">
         <div className="full"><label className="label" htmlFor="f-name">Nama acara</label><input className="inp" id="f-name" placeholder="Latihan Wisuda ASTRAtech 2026" value={f.name} onChange={(e) => set("name", e.target.value)} autoFocus /></div>
+        <div className="full">
+          <label className="label" htmlFor="f-koor">Koor acara <span className="sched-sum">· wajib</span></label>
+          <KoorPicker value={koor} onChange={(v) => { setKoor(v); setErr(""); if (only) setSel((o) => new Set([...o, ...v])); }} pool={only ? sel : null} />
+          <p className="hint-sm" style={{ margin: "8px 0 0" }}>Di laporan Excel, koor tercatat sebagai <b>Koor Tari</b> dan peserta lainnya <b>Tim Tari</b>.</p>
+        </div>
         <div><label className="label" htmlFor="f-cat">Jenis</label><select className="select" id="f-cat" value={f.category} onChange={(e) => set("category", e.target.value)}>{CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select></div>
         <div><label className="label" htmlFor="f-loc">Lokasi default</label><input className="inp" id="f-loc" placeholder="Auditorium" value={f.location} onChange={(e) => set("location", e.target.value)} /></div>
         <div><label className="label" htmlFor="f-start">Jam mulai default</label><input className="inp" type="time" id="f-start" value={f.dStart} onChange={(e) => set("dStart", e.target.value)} /></div>
@@ -205,7 +270,7 @@ function EventForm({ open, initial, onClose, onSaved }) {
 }
 
 export default function Acara() {
-  const { events, att, loading, jamOf, loadEvents, loadAtt } = useData();
+  const { events, att, loading, jamOf, loadEvents, loadAtt, stuMap } = useData();
   const toast = useToast();
   const [q, setQ] = useState("");
   const [modal, setModal] = useState({ open: false, ev: null });
@@ -223,7 +288,7 @@ export default function Acara() {
     return m;
   }, [events, att, jamOf]);
 
-  const list = events.filter((e) => !q.trim() || `${e.name} ${e.category} ${e.location || ""} ${e.sessions.map((x) => x.lokasi || "").join(" ")}`.toLowerCase().includes(q.trim().toLowerCase()));
+  const list = events.filter((e) => !q.trim() || `${e.name} ${e.category} ${e.location || ""} ${e.sessions.map((x) => x.lokasi || "").join(" ")} ${(e.koor || []).map((n) => stuMap.get(n)?.nama || n).join(" ")}`.toLowerCase().includes(q.trim().toLowerCase()));
 
   const toggle = async (e) => {
     try {
@@ -264,6 +329,7 @@ export default function Acara() {
               <div className="ev-info">
                 <span><Icon name="calendar" />{eventRange(e)} · {e.sessions.length} sesi</span>
                 <span><Icon name="pin" />{locSummary(e)}</span>
+                <span className={(e.koor || []).length ? "" : "warn-t"}><Icon name="user" />{(e.koor || []).length ? `Koor: ${e.koor.map((n) => stuMap.get(n)?.nama || n).join(", ")}` : "Belum ada koor · klik Ubah"}</span>
                 <button type="button" className={`pes-chip ${e.peserta_only ? "on" : ""}`} onClick={() => setPes(e.id)} title="Atur peserta acara"><Icon name="users" />{pesertaLabel(e)}<Icon name="edit" /></button>
               </div>
               <div className="timeline" aria-hidden="true">
