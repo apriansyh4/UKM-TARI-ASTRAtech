@@ -5,7 +5,7 @@ import Icon from "../Icon";
 import Modal from "../Modal";
 import { useToast } from "../Toast";
 import { useData } from "./DataProvider";
-import { ConfirmDelete, Empty, Hero, MiniAv } from "./ui";
+import { ConfirmDelete, Empty, Hero } from "./ui";
 import PesertaModal, { PesertaPicker, syncPeserta } from "./Peserta";
 import { supabaseBrowser, errMsg } from "@/lib/supabase/client";
 import { CATEGORIES, CAT_ICON, STATUS, STATUS_KEYS, WEEKDAYS, datesBetween, dObj, eventRange, fmtJam, fmtShort, hhmm, hrsOf, locSummary, pesertaLabel, rangeOf, sesLoc, shiftDate, todayJakarta } from "@/lib/utils";
@@ -13,7 +13,7 @@ import { CATEGORIES, CAT_ICON, STATUS, STATUS_KEYS, WEEKDAYS, datesBetween, dObj
 const tmpId = () => `new-${Math.random().toString(36).slice(2, 9)}`;
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
 
-/** Dropdown koor yang bisa dicari (nama/NIM/prodi). Bisa lebih dari satu koor. */
+/** Dropdown koor yang bisa dicari (nama/NIM). Bisa lebih dari satu koor. */
 function KoorPicker({ value, onChange, pool }) {
   const { students } = useData();
   const [q, setQ] = useState("");
@@ -24,7 +24,7 @@ function KoorPicker({ value, onChange, pool }) {
   const list = useMemo(() => {
     const t = q.trim().toLowerCase();
     return students
-      .filter((x) => !value.includes(x.nim) && (!t || `${x.nama} ${x.nim} ${x.prodi}`.toLowerCase().includes(t)))
+      .filter((x) => !value.includes(x.nim) && (!t || `${x.nama} ${x.nim}`.toLowerCase().includes(t)))
       .sort((a, b) => (pool ? pool.has(b.nim) - pool.has(a.nim) : 0) || a.nama.localeCompare(b.nama))
       .slice(0, 40);
   }, [students, value, q, pool]);
@@ -37,33 +37,32 @@ function KoorPicker({ value, onChange, pool }) {
     else if (e.key === "Backspace" && !q && value.length) onChange(value.slice(0, -1));
   };
   return (
-    <div className="koor">
+    <div className="kp">
       {value.length ? (
-        <div className="koor-chips">
-          {value.map((n) => { const x = byNim.get(n); return (
-            <span key={n} className="koor-chip">
-              {x ? <MiniAv st={x} /> : null}<b>{x ? x.nama : n}</b><small className="mono">{n}{x ? ` · ${x.prodi}` : ""}</small>
-              <button type="button" onClick={() => onChange(value.filter((v) => v !== n))} aria-label={`Hapus koor ${x ? x.nama : n}`}><Icon name="x" /></button>
+        <div className="kp-sel">
+          {value.map((n) => (
+            <span key={n} className="kp-chip">
+              <span className="kp-n">{byNim.get(n)?.nama || n}</span><span className="kp-m">{n}</span>
+              <button type="button" onClick={() => onChange(value.filter((v) => v !== n))} aria-label={`Hapus koor ${byNim.get(n)?.nama || n}`}><Icon name="x" /></button>
             </span>
-          ); })}
+          ))}
         </div>
       ) : null}
-      <div className={`koor-box ${open ? "open" : ""}`}>
-        <Icon name="search" />
-        <input ref={inp} className="inp" id="f-koor" role="combobox" aria-expanded={open} aria-controls="koor-list" aria-autocomplete="list" autoComplete="off"
-          placeholder={value.length ? "Tambah koor lain (opsional)" : "Cari nama atau NIM koor…"}
+      <div className={`kp-box ${open ? "open" : ""}`}>
+        <span className="kp-ic"><Icon name="search" /></span>
+        <input ref={inp} id="f-koor" role="combobox" aria-expanded={open} aria-controls="kp-list" aria-autocomplete="list" autoComplete="off"
+          placeholder={value.length ? "Tambah koor lain (opsional)" : "Cari nama atau NIM koor"}
           value={q} onChange={(e) => { setQ(e.target.value); setOpen(true); setHi(0); }} onFocus={() => setOpen(true)}
           onBlur={() => setTimeout(() => setOpen(false), 150)} onKeyDown={key} />
-        <button type="button" className="koor-caret" tabIndex={-1} aria-label="Buka daftar" onMouseDown={(e) => e.preventDefault()} onClick={() => { setOpen((o) => !o); inp.current?.focus(); }}><span className="car" aria-hidden="true" /></button>
+        <button type="button" className="kp-car" tabIndex={-1} aria-label="Buka daftar" onMouseDown={(e) => e.preventDefault()} onClick={() => { setOpen((o) => !o); inp.current?.focus(); }}><i /></button>
         {open ? (
-          <ul className="koor-list" id="koor-list" role="listbox">
+          <div className="kp-list" id="kp-list" role="listbox">
             {list.length ? list.map((x, i) => (
-              <li key={x.nim} role="option" aria-selected={i === hi} className={i === hi ? "hi" : ""} onMouseDown={(e) => e.preventDefault()} onMouseEnter={() => setHi(i)} onClick={() => pick(x)}>
-                <MiniAv st={x} /><span><b>{x.nama}</b><small className="mono">{x.nim} · {x.prodi} · Smt {x.semester}</small></span>
-                {pool && pool.has(x.nim) ? <em>peserta</em> : null}
-              </li>
-            )) : <li className="none">{students.length ? "Tidak ada yang cocok" : "Belum ada mahasiswa terdaftar"}</li>}
-          </ul>
+              <div key={x.nim} role="option" aria-selected={i === hi} className={`kp-opt ${i === hi ? "hi" : ""}`} onMouseDown={(e) => e.preventDefault()} onMouseEnter={() => setHi(i)} onClick={() => pick(x)}>
+                <span className="kp-n">{x.nama}</span><span className="kp-m">{x.nim}</span>
+              </div>
+            )) : <div className="kp-none">{students.length ? "Tidak ada yang cocok" : "Belum ada mahasiswa terdaftar"}</div>}
+          </div>
         ) : null}
       </div>
     </div>
@@ -288,7 +287,9 @@ export default function Acara() {
     return m;
   }, [events, att, jamOf]);
 
-  const list = events.filter((e) => !q.trim() || `${e.name} ${e.category} ${e.location || ""} ${e.sessions.map((x) => x.lokasi || "").join(" ")} ${(e.koor || []).map((n) => stuMap.get(n)?.nama || n).join(" ")}`.toLowerCase().includes(q.trim().toLowerCase()));
+  // yang aktif di depan, yang dinonaktifkan di belakang; di tiap kelompok acara terbaru paling atas
+  const sorted = useMemo(() => [...events].sort((a, b) => (b.is_active - a.is_active) || String(b.created_at).localeCompare(String(a.created_at))), [events]);
+  const list = sorted.filter((e) => !q.trim() || `${e.name} ${e.category} ${e.location || ""} ${e.sessions.map((x) => x.lokasi || "").join(" ")} ${(e.koor || []).map((n) => stuMap.get(n)?.nama || n).join(" ")}`.toLowerCase().includes(q.trim().toLowerCase()));
 
   const toggle = async (e) => {
     try {
